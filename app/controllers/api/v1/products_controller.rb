@@ -21,10 +21,13 @@ class Api::V1::ProductsController < ApplicationController
   end
 
   def update
-    if @product.update(product_params)
-      render_success(@product)
+    service = ProductUpdater.new(@product, product_params)
+    result = service.call
+
+    if result[:success]
+      render_success(result[:product])
     else
-      render_error(@product.errors, :unprocessable_entity)
+      render_error(result[:errors], :unprocessable_entity)
     end
   end
 
