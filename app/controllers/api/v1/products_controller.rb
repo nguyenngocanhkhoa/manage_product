@@ -3,77 +3,60 @@ class Api::V1::ProductsController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def create
-    @product = Product.new product_params
+    @product = Product.new(product_params)
     if @product.save
-      render json: {
-        status: true,
-        data: @product
-      },
-      status: :created
+      render_success(@product, :created)
     else
-      render json: {
-        status: false,
-        error: @product.errors
-      },
-      status: :unprocessable_entity
+      render_error(@product.errors, :unprocessable_entity)
     end
   end
 
   def index
     @products = Product.all
-    render json: {
-      status: true,
-      data: @products
-    },
-    status: :ok
+    render_success(@products)
   end
 
   def show
-    render json: {
-      status: true,
-      data: @product
-    },
-    status: :ok
+    render_success(@product)
   end
 
   def update
-    if @product.update product_params
-      render json: {
-        status: true,
-        data: @product
-      },
-      status: :ok
+    if @product.update(product_params)
+      render_success(@product)
     else
-      render json: {
-        status: false,
-        error: @product.errors
-      },
-      status: :unprocessable_entity
+      render_error(@product.errors, :unprocessable_entity)
     end
   end
 
   def destroy
     @product.destroy
-    render json: {
-      status: true,
-      data: @product
-    },
-    status: :ok
+    render_success(@product)
   end
 
   private
 
   def product_params
-    params.permit :title, :content
+    params.permit(:title, :content)
   end
 
   def load_product
-    @product = Product.find_by id: params[:id]
-    return if @product
-    render json: {
-      status: false,
-      message: 'Not found'
-    },
-    status: :not_found
+    @product = Product.find_by(id: params[:id])
+    render_error('Not found', :not_found) unless @product
+  end
+
+  def render_success(data, status = :ok)
+    render json: { status: true, data: serialize_data(data) }, status: status
+  end
+
+  def render_error(message, status)
+    render json: { status: false, error: message }, status: status
+  end
+
+  def serialize_data(data)
+    if data.is_a?(ActiveRecord::Relation)
+      ActiveModel::Serializer::CollectionSerializer.new(data, serializer: ProductSerializer)
+    else
+      ProductSerializer.new(data)
+    end
   end
 end
